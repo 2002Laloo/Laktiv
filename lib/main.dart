@@ -4,9 +4,6 @@ import 'screens/home_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/about_screen.dart';
 
-
-List<Map<String, String>> resetSoveYo = [];
-
 void main() {
   runApp(const LakResetApp());
 }
@@ -37,12 +34,30 @@ class AppNavigation extends StatefulWidget {
 
 class _AppNavigationState extends State<AppNavigation> {
   int _selectedIndex = 0;
+  final GlobalKey<FavoritesScreenState> _favoritesKey = GlobalKey<FavoritesScreenState>();
+  final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
 
-  final List<Widget> _pages = [
-    const HomeScreen(),        
-    const FavoritesScreen(),   
-    const AboutScreen(), 
-  ];
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomeScreen(
+        key: _homeKey,
+        onFavoriteChanged: () {
+          _favoritesKey.currentState?.loadFavorites();
+        },
+      ),
+      FavoritesScreen(
+        key: _favoritesKey,
+        onFavoriteChanged: () {
+          _homeKey.currentState?.loadFavoriteIds();
+        },
+      ),
+      const AboutScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +72,11 @@ class _AppNavigationState extends State<AppNavigation> {
           setState(() {
             _selectedIndex = index;
           });
+          if (index == 1) {
+            _favoritesKey.currentState?.loadFavorites();
+          } else if (index == 0) {
+            _homeKey.currentState?.loadFavoriteIds();
+          }
         },
         selectedItemColor: Colors.orange[800],
         unselectedItemColor: Colors.grey,

@@ -1,86 +1,194 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:lakreset/models.dart';
+import 'detail_screen.dart';
 
-class FavoritesScreen extends StatelessWidget {
-  const FavoritesScreen({super.key});
+class FavoritesScreen extends StatefulWidget {
+  final VoidCallback? onFavoriteChanged;
+  
+  const FavoritesScreen({super.key, this.onFavoriteChanged});
+
+  @override
+  State<FavoritesScreen> createState() => FavoritesScreenState();
+}
+
+class FavoritesScreenState extends State<FavoritesScreen> {
+  List<Recettes> _favoriteRecettes = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadFavorites();
+  }
+
+  Future<void> loadFavorites() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final favoritesJson = prefs.getStringList('favorite_Recettes') ?? [];
+      
+      final favorites = favoritesJson.map((jsonStr) {
+        return Recettes.fromJson(json.decode(jsonStr));
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _favoriteRecettes = favorites;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _removeFavorite(Recettes Recette) async {
+    final prefs = await SharedPreferences.getInstance();
+    final favoritesJson = prefs.getStringList('favorite_Recettes') ?? [];
+    
+    List<Recettes> favoriteRecettes = favoritesJson.map((jsonStr) {
+      return Recettes.fromJson(json.decode(jsonStr));
+    }).toList();
+    
+    favoriteRecettes.removeWhere((r) => r.id == Recette.id);
+    
+    final updatedJson = favoriteRecettes.map((r) => json.encode(r.toJson())).toList();
+    await prefs.setStringList('favorite_Recettes', updatedJson);
+    
+    if (mounted) {
+      setState(() {
+        _favoriteRecettes.removeWhere((r) => r.id == Recette.id);
+      });
+
+      widget.onFavoriteChanged?.call();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${Recette.name} retire nan favori'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, String>> dummyFavorites = [
-      {
-        'nom': 'Griot ak Banann Peze',
-        'image': 'https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?q=80&w=500',
-      },
-      {
-        'nom': 'Legim Ayisyen',
-        'image': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=500',
-      },
-    ];
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Favori",
+        title: const Text(
+          "Favori",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: false,
         backgroundColor: Colors.orange[800],
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: dummyFavorites.length,
-              itemBuilder: (context, index) {
-                final recipe = dummyFavorites[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  elevation: 3,
-                  child: Row(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _favoriteRecettes.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(15),
-                          bottomLeft: Radius.circular(15),
-                        ),
-                        child: Image.network(
-                          recipe['image']!,
-                          width: 110,
-                          height: 80, 
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            width: 110,
-                            height: 80,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.broken_image),
-                          ),
-                        ),
+                      Icon(Icons.favorite_border, size: 80, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Pa gen favori ankò',
+                        style: TextStyle(fontSize: 18, color: Colors.grey[600]),
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 15),
-                          child: Text(
-                            recipe['nom']!,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(right: 15.0),
-                        child: Icon(Icons.favorite, color: Colors.red, size: 28),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ajoute kèk resèt nan favori ou!',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+                )
+              : RefreshIndicator(
+                  onRefresh: loadFavorites,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _favoriteRecettes.length,
+                    itemBuilder: (context, index) {
+                      final Recette = _favoriteRecettes[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 3,
+                        child: InkWell(
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DetailScreen(
+                                  Recette: Recette,
+                                  isFromFavorites: true,
+                                  onFavoriteChanged: () {
+                                    loadFavorites();
+                                    widget.onFavoriteChanged?.call();
+                                  },
+                                ),
+                              ),
+                            );
+                            
+                            if (result == true) {
+                              loadFavorites();
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(15),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(15),
+                                  bottomLeft: Radius.circular(15),
+                                ),
+                                child: Image.network(
+                                  Recette.image,
+                                  width: 110,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    width: 110,
+                                    height: 80,
+                                    color: Colors.grey[300],
+                                    child: const Icon(Icons.broken_image),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                                  child: Text(
+                                    Recette.name,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: IconButton(
+                                  icon: const Icon(Icons.favorite, color: Colors.red, size: 28),
+                                  onPressed: () => _removeFavorite(Recette),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
     );
   }
 }

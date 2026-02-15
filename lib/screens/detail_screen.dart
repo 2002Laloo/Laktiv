@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:lakreset/models.dart';
 
 class DetailScreen extends StatefulWidget {
-  final Recipes recipe;
+  final Recettes Recette;
+  final bool isFromFavorites;
+  final VoidCallback? onFavoriteChanged;
 
   const DetailScreen({
     super.key,
-    required this.recipe,
+    required this.Recette,
+    this.isFromFavorites = false,
+    this.onFavoriteChanged,
   });
 
   @override
@@ -17,21 +23,95 @@ class _DetailScreenState extends State<DetailScreen> {
   bool isFavorite = false;
 
   @override
+  void initState() {
+    super.initState();
+    _checkFavoriteStatus();
+  }
+
+  Future<void> _checkFavoriteStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final favoritesJson = prefs.getStringList('favorite_Recettes') ?? [];
+    
+    final favoriteIds = favoritesJson.map((jsonStr) {
+      final Recette = Recettes.fromJson(json.decode(jsonStr));
+      return Recette.id;
+    }).toList();
+    
+    if (mounted) {
+      setState(() {
+        isFavorite = favoriteIds.contains(widget.Recette.id);
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final prefs = await SharedPreferences.getInstance();
+    final favoritesJson = prefs.getStringList('favorite_Recettes') ?? [];
+
+    List<Recettes> favoriteRecettes = favoritesJson.map((jsonStr) {
+      return Recettes.fromJson(json.decode(jsonStr));
+    }).toList();
+
+    if (isFavorite) {
+      favoriteRecettes.removeWhere((r) => r.id == widget.Recette.id);
+
+      if (mounted) {
+        setState(() {
+          isFavorite = false;
+        });
+
+        widget.onFavoriteChanged?.call();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${widget.Recette.name} retire nan favori'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        if (widget.isFromFavorites) {
+          Navigator.pop(context, true);
+        }
+      }
+    } else {
+      final exists = favoriteRecettes.any((r) => r.id == widget.Recette.id);
+      if (!exists) {
+        favoriteRecettes.add(widget.Recette);
+      }
+
+      if (mounted) {
+        setState(() {
+          isFavorite = true;
+        });
+
+        widget.onFavoriteChanged?.call();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${widget.Recette.name} ajoute nan favori'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+
+    final updatedJson = favoriteRecettes.map((r) => json.encode(r.toJson())).toList();
+    await prefs.setStringList('favorite_Recettes', updatedJson);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.recipe.tit),
+        title: Text(widget.Recette.name),
+        backgroundColor: Colors.orange[800],
         actions: [
           IconButton(
             icon: Icon(
               isFavorite ? Icons.favorite : Icons.favorite_border,
               color: isFavorite ? Colors.red : Colors.white,
             ),
-            onPressed: () {
-              setState(() {
-                isFavorite = !isFavorite;
-              });
-            },
+            onPressed: _toggleFavorite,
           ),
         ],
       ),
@@ -39,11 +119,10 @@ class _DetailScreenState extends State<DetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             Stack(
               children: [
                 Image.network(
-                  widget.recipe.image,
+                  widget.Recette.image,
                   width: double.infinity,
                   height: 250,
                   fit: BoxFit.cover,
@@ -74,7 +153,7 @@ class _DetailScreenState extends State<DetailScreen> {
                   left: 20,
                   right: 20,
                   child: Text(
-                    widget.recipe.tit,
+                    widget.Recette.name,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 26,
@@ -92,7 +171,6 @@ class _DetailScreenState extends State<DetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   const Text(
                     'Engredyan',
                     style: TextStyle(
@@ -103,7 +181,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
                   const SizedBox(height: 10),
 
-                  if (widget.recipe.engredyan.isEmpty)
+                  if (widget.Recette.ingredients.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8.0),
                       child: Text(
@@ -116,7 +194,7 @@ class _DetailScreenState extends State<DetailScreen> {
                       ),
                     )
                   else
-                    ...widget.recipe.engredyan.map((ingredient) {
+                    ...widget.Recette.ingredients.map((ingredient) {
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4.0),
                         child: Row(
@@ -155,7 +233,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
                   const SizedBox(height: 10),
 
-                  if (widget.recipe.enstriksyon.isEmpty)
+                  if (widget.Recette.instructions.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8.0),
                       child: Text(
@@ -168,7 +246,7 @@ class _DetailScreenState extends State<DetailScreen> {
                       ),
                     )
                   else
-                    ...widget.recipe.enstriksyon.asMap().entries.map((entry) {
+                    ...widget.Recette.instructions.asMap().entries.map((entry) {
                       int index = entry.key;
                       String instruction = entry.value;
                       
@@ -181,7 +259,7 @@ class _DetailScreenState extends State<DetailScreen> {
                               width: 28,
                               height: 28,
                               decoration: BoxDecoration(
-                                color: const Color.fromARGB(255, 0, 255, 128),
+                                color: Colors.orange[800],
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Center(

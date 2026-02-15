@@ -1,28 +1,26 @@
-
-
-class Recipes {
+class Recettes {
   final int id;
-  final String tit;
-  final List<String> engredyan;
-  final List<String> enstriksyon;
+  final String name;
+  final List<String> ingredients;
+  final List<String> instructions;
   final String image;
 
-  Recipes({
+  Recettes({
     required this.id,
-    required this.tit,
-    required this.engredyan,
-    required this.enstriksyon,
+    required this.name,
+    required this.ingredients,
+    required this.instructions,
     String? image,
   }) : image = image ?? '';
 
-  factory Recipes.fromJson(Map<String, dynamic> el) {
-    return Recipes(
+  factory Recettes.fromJson(Map<String, dynamic> el) {
+    return Recettes(
       id: el['id'] ?? 0,
-      tit: (el['name'] ?? '').toString(),
-      engredyan: (el['ingredients'] != null)
+      name: (el['name'] ?? '').toString(),
+      ingredients: (el['ingredients'] != null)
           ? List<String>.from(el['ingredients'].where((e) => e != null).map((e) => e.toString()))
           : <String>[],
-      enstriksyon: (el['instructions'] != null)
+      instructions: (el['instructions'] != null)
           ? List<String>.from(el['instructions'].where((e) => e != null).map((e) => e.toString()))
           : <String>[],
       image: (el['image'] ?? '').toString(),
@@ -33,9 +31,9 @@ class Recipes {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'tit': tit,
-      'engredyan': engredyan,
-      'enstriksyon': enstriksyon,
+      'name': name,
+      'ingredients': ingredients,
+      'instructions': instructions,
       'image': image,
     };
   }
