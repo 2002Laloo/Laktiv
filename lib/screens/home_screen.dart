@@ -68,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lis Resèt'),
-        backgroundColor: const Color.fromARGB(255, 0, 255, 128),
+        backgroundColor:  Colors.orange[800],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
