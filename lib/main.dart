@@ -4,6 +4,7 @@ import 'screens/home_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/about_screen.dart';
 
+
 void main() {
   runApp(const LakResetApp());
 }
@@ -46,17 +47,34 @@ class _AppNavigationState extends State<AppNavigation> {
       HomeScreen(
         key: _homeKey,
         onFavoriteChanged: () {
+          // Recharger la liste des favoris quand un favori est ajouté/retiré depuis Home
           _favoritesKey.currentState?.loadFavorites();
         },
       ),
       FavoritesScreen(
         key: _favoritesKey,
         onFavoriteChanged: () {
+          // Recharger les IDs des favoris quand un favori est retiré depuis Favorites
           _homeKey.currentState?.loadFavoriteIds();
         },
       ),
       const AboutScreen(),
     ];
+  }
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    
+    // Recharger les données quand on change d'onglet
+    if (index == 1) {
+      // Quand on va sur l'onglet Favoris, recharger la liste
+      _favoritesKey.currentState?.loadFavorites();
+    } else if (index == 0) {
+      // Quand on revient sur l'onglet Home, recharger les IDs des favoris
+      _homeKey.currentState?.loadFavoriteIds();
+    }
   }
 
   @override
@@ -68,16 +86,7 @@ class _AppNavigationState extends State<AppNavigation> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          if (index == 1) {
-            _favoritesKey.currentState?.loadFavorites();
-          } else if (index == 0) {
-            _homeKey.currentState?.loadFavoriteIds();
-          }
-        },
+        onTap: _onTabTapped,
         selectedItemColor: Colors.orange[800],
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,

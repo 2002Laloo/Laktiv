@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:lakreset/favorites%20service.dart';
 import 'package:lakreset/models.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -29,74 +28,43 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Future<void> _checkFavoriteStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final favoritesJson = prefs.getStringList('favorite_Recettes') ?? [];
-    
-    final favoriteIds = favoritesJson.map((jsonStr) {
-      final Recette = Recettes.fromJson(json.decode(jsonStr));
-      return Recette.id;
-    }).toList();
+    final favorite = await FavoritesService.isFavorite(widget.Recette.id);
     
     if (mounted) {
       setState(() {
-        isFavorite = favoriteIds.contains(widget.Recette.id);
+        isFavorite = favorite;
       });
     }
   }
 
   Future<void> _toggleFavorite() async {
-    final prefs = await SharedPreferences.getInstance();
-    final favoritesJson = prefs.getStringList('favorite_Recettes') ?? [];
+    final wasToggled = await FavoritesService.toggleFavorite(widget.Recette);
+    
+    if (!wasToggled) return;
 
-    List<Recettes> favoriteRecettes = favoritesJson.map((jsonStr) {
-      return Recettes.fromJson(json.decode(jsonStr));
-    }).toList();
+    if (mounted) {
+      setState(() {
+        isFavorite = !isFavorite;
+      });
 
-    if (isFavorite) {
-      favoriteRecettes.removeWhere((r) => r.id == widget.Recette.id);
+      widget.onFavoriteChanged?.call();
 
-      if (mounted) {
-        setState(() {
-          isFavorite = false;
-        });
-
-        widget.onFavoriteChanged?.call();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${widget.Recette.name} retire nan favori'),
-            duration: const Duration(seconds: 2),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isFavorite 
+                ? '${widget.Recette.name} ajoute nan favori'
+                : '${widget.Recette.name} retire nan favori'
           ),
-        );
+          duration: const Duration(seconds: 2),
+        ),
+      );
 
-        if (widget.isFromFavorites) {
-          Navigator.pop(context, true);
-        }
-      }
-    } else {
-      final exists = favoriteRecettes.any((r) => r.id == widget.Recette.id);
-      if (!exists) {
-        favoriteRecettes.add(widget.Recette);
-      }
-
-      if (mounted) {
-        setState(() {
-          isFavorite = true;
-        });
-
-        widget.onFavoriteChanged?.call();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${widget.Recette.name} ajoute nan favori'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+      // Si on est dans l'écran des favoris et qu'on retire le favori, on revient en arrière
+      if (widget.isFromFavorites && !isFavorite) {
+        Navigator.pop(context, true);
       }
     }
-
-    final updatedJson = favoriteRecettes.map((r) => json.encode(r.toJson())).toList();
-    await prefs.setStringList('favorite_Recettes', updatedJson);
   }
 
   @override

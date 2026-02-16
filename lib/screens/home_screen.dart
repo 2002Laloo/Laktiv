@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lakreset/api_Service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:lakreset/favorites%20service.dart';
 import 'detail_screen.dart';
 import 'package:lakreset/models.dart';
 
@@ -74,17 +73,7 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> loadFavoriteIds() async {
-    final prefs = await SharedPreferences.getInstance();
-    final favoritesJson = prefs.getStringList('favorite_Recettes') ?? [];
-    
-    final ids = favoritesJson.map((jsonStr) {
-      try {
-        final Recette = Recettes.fromJson(json.decode(jsonStr));
-        return Recette.id;
-      } catch (e) {
-        return 0;
-      }
-    }).where((id) => id != 0).toSet();
+    final ids = await FavoritesService.getFavoriteIds();
     
     if (mounted) {
       setState(() {
@@ -93,44 +82,24 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _toggleFavorite(Recettes Recette) async {
-    final prefs = await SharedPreferences.getInstance();
-    final favoritesJson = prefs.getStringList('favorite_Recettes') ?? [];
+  Future<void> _toggleFavorite(Recettes recette) async {
+    final wasToggled = await FavoritesService.toggleFavorite(recette);
     
-    List<Recettes> favoriteRecettes = [];
-    for (String jsonStr in favoritesJson) {
-      try {
-        favoriteRecettes.add(Recettes.fromJson(json.decode(jsonStr)));
-      } catch (e) {
-        continue;
-      }
-    }
+    if (!wasToggled) return;
     
-    bool isFavorite = _favoriteIds.contains(Recette.id);
-    
-    if (isFavorite) {
-      favoriteRecettes.removeWhere((r) => r.id == Recette.id);
-      _favoriteIds.remove(Recette.id);
-    } else {
-      favoriteRecettes.add(Recette);
-      _favoriteIds.add(Recette.id);
-    }
-    
-    final updatedJson = favoriteRecettes.map((r) => json.encode(r.toJson())).toList();
-    
-    await prefs.setStringList('favorite_Recettes', updatedJson);
+    await loadFavoriteIds();
     
     if (mounted) {
-      setState(() {});
-      
       widget.onFavoriteChanged?.call();
+      
+      final isFavorite = _favoriteIds.contains(recette.id);
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             isFavorite 
-                ? '${Recette.name} retire nan favori' 
-                : '${Recette.name} ajoute nan favori'
+                ? '${recette.name} ajoute nan favori' 
+                : '${recette.name} retire nan favori'
           ),
           duration: const Duration(seconds: 2),
         ),
