@@ -103,6 +103,9 @@ Sinon, tu devras faire des castings partout, ce qui n’est pas recommandé.
 ```
 a pati ekzanp sa mwen rive konprann e korije erè tip sa
 
+m te ranplase tip dinamics lan pa tip konstriktè a epi pase men nan fason m tap fe mapaj la
+
+
 
 
 ```
@@ -111,6 +114,8 @@ a pati ekzanp sa mwen rive konprann e korije erè tip sa
 *(Kisa w aprann sou pwosès la? Kòman zouti AI sa ede w nan aprantisaj ak konpreyansyon w?)*
 ```
 aprann sekirize fason map modelize done kap soti nan API la
+
+mwen aprann yon meye fason m ka konveti done JSON  an yon obje tipe
 
 
 
